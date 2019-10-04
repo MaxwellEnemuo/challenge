@@ -1,31 +1,13 @@
+var express = require("express");
+var router = express.Router();
+const Conn = require("../config/dbConn");
 const ActorModel = require("../models/actorModel");
 const EventModel = require("../models/eventModel");
 const moment = require("moment");
-const Conn = require("../config/Conn");
 const conn = new Conn("./config/table.db");
 const actorModel = new ActorModel(conn);
-const temp_conn = new Conn(":memory:");
-const temp_actorModel = new ActorModel(temp_conn);
-const eventModel = new EventModel(conn);
 
-var getAllActors = (req, res, next) => {
-  var p = actorModel
-    .getAllWithMostEvents()
-    .then(rows => {
-      var actors = [];
-      rows.forEach(actor => {
-        actors.push({
-          id: actor.id,
-          login: actor.login,
-          avatar_url: actor.avatar_url
-        });
-      });
-      res.status(200).json(actors);
-    })
-    .catch(err => next(err));
-};
-
-var updateActor = (req, res, next) => {
+router.put("/", function(req, res, next) {
   var actor = req.body;
 
   var p = actorModel
@@ -44,9 +26,30 @@ var updateActor = (req, res, next) => {
     .then(() => actorModel.update(actor.id, actor.login, actor.avatar_url))
     .then(() => res.status(200).end())
     .catch(err => next(err));
-};
+});
 
-var getStreak = (req, res, next) => {
+router.get("/", function(req, res, next) {
+  var p = actorModel
+    .getAllWithMostEvents()
+    .then(rows => {
+      var actors = [];
+      rows.forEach(actor => {
+        actors.push({
+          id: actor.id,
+          login: actor.login,
+          avatar_url: actor.avatar_url
+        });
+      });
+      res.status(200).json(actors);
+    })
+    .catch(err => next(err));
+});
+
+router.get("/streak", function(req, res, next) {
+  const temp_conn = new Conn(":memory:");
+  const temp_actorModel = new ActorModel(temp_conn);
+  const eventModel = new EventModel(conn);
+
   var calcStreak = actor => {
     return new Promise((resolve, reject) => {
       eventModel.getAllByActorId(actor.id, true).then(events => {
@@ -108,10 +111,6 @@ var getStreak = (req, res, next) => {
     })
     .then(sanitized => res.status(200).json(sanitized))
     .catch(err => next(err));
-};
+});
 
-module.exports = {
-  updateActor: updateActor,
-  getAllActors: getAllActors,
-  getStreak: getStreak
-};
+module.exports = router;
